@@ -20,6 +20,11 @@
 
         canvas {
             display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
         }
 
         .title {
@@ -40,8 +45,8 @@
             top: 20px;
             width: 40px;
             height: 40px;
-            background: rgba(20, 20, 30, 0.95);
-            border: 1px solid #64a0ff;
+            background: rgba(20, 20, 30, 0.6);
+            border: 1px solid rgba(100, 160, 255, 0.6);
             color: #64a0ff;
             font-size: 20px;
             cursor: pointer;
@@ -50,14 +55,15 @@
             align-items: center;
             justify-content: center;
             transition: background 0.3s, transform 0.3s;
+            backdrop-filter: blur(10px);
         }
 
         .toggle-btn:hover {
-            background: rgba(100, 160, 255, 0.2);
+            background: rgba(100, 160, 255, 0.3);
         }
 
         .toggle-btn.active {
-            background: rgba(100, 160, 255, 0.3);
+            background: rgba(100, 160, 255, 0.4);
         }
 
         #controlsToggle {
@@ -68,22 +74,25 @@
             right: 20px;
         }
 
-        /* Panels */
+        /* Panels - Now Transparent */
         .panel {
             position: fixed;
             top: 0;
             width: 280px;
             height: 100%;
-            background: rgba(20, 20, 30, 0.95);
+            background: rgba(10, 10, 20, 0.4);
+            backdrop-filter: blur(15px);
             padding: 80px 20px 20px;
             transition: transform 0.3s ease;
             z-index: 150;
             overflow-y: auto;
+            border: 1px solid rgba(100, 160, 255, 0.2);
         }
 
         #controlsPanel {
             left: 0;
             transform: translateX(-100%);
+            border-left: none;
         }
 
         #controlsPanel.open {
@@ -93,6 +102,7 @@
         #statsPanel {
             right: 0;
             transform: translateX(100%);
+            border-right: none;
         }
 
         #statsPanel.open {
@@ -103,8 +113,9 @@
             color: #64a0ff;
             margin-bottom: 20px;
             font-size: 18px;
-            border-bottom: 1px solid #64a0ff;
+            border-bottom: 1px solid rgba(100, 160, 255, 0.5);
             padding-bottom: 10px;
+            text-shadow: 0 0 10px rgba(100, 160, 255, 0.3);
         }
 
         .control-group {
@@ -113,7 +124,7 @@
 
         .control-group label {
             display: block;
-            color: #aaa;
+            color: #ccc;
             margin-bottom: 8px;
             font-size: 13px;
         }
@@ -148,7 +159,7 @@
         }
 
         .stat-label {
-            color: #aaa;
+            color: #ccc;
             font-size: 14px;
         }
 
@@ -156,6 +167,21 @@
             color: #64a0ff;
             font-size: 16px;
             font-weight: bold;
+            text-shadow: 0 0 8px rgba(100, 160, 255, 0.5);
+        }
+
+        /* Scrollbar styling */
+        .panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .panel::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .panel::-webkit-scrollbar-thumb {
+            background: rgba(100, 160, 255, 0.4);
+            border-radius: 3px;
         }
     </style>
 </head>
@@ -261,13 +287,27 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
 
-        // Resize canvas
+        // Resize canvas to full screen
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
         }
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
+
+        // Vibrant color palette for nodes
+        const colorPalette = [
+            { r: 255, g: 100, b: 150 },  // Pink
+            { r: 100, g: 200, b: 255 },  // Cyan
+            { r: 255, g: 180, b: 100 },  // Orange
+            { r: 150, g: 100, b: 255 },  // Purple
+            { r: 100, g: 255, b: 180 },  // Mint
+            { r: 255, g: 100, b: 100 },  // Red
+            { r: 100, g: 255, b: 100 },  // Green
+            { r: 255, g: 255, b: 100 },  // Yellow
+            { r: 255, g: 150, b: 255 },  // Magenta
+            { r: 100, g: 180, b: 255 },  // Light Blue
+        ];
 
         // Configuration
         const config = {
@@ -293,6 +333,8 @@
                 this.vx = (Math.random() - 0.5) * 2;
                 this.vy = (Math.random() - 0.5) * 2;
                 this.vz = (Math.random() - 0.5) * 2;
+                // Assign random color from palette
+                this.color = colorPalette[Math.floor(Math.random() * colorPalette.length)];
             }
 
             update() {
@@ -352,6 +394,15 @@
             return Math.sqrt(dx * dx + dy * dy + dz * dz);
         }
 
+        // Blend two colors
+        function blendColors(c1, c2, ratio) {
+            return {
+                r: Math.round(c1.r * (1 - ratio) + c2.r * ratio),
+                g: Math.round(c1.g * (1 - ratio) + c2.g * ratio),
+                b: Math.round(c1.b * (1 - ratio) + c2.b * ratio)
+            };
+        }
+
         // Statistics
         let stats = {
             edges: 0,
@@ -383,7 +434,7 @@
             let edgeCount = 0;
             const connectionCounts = new Array(nodes.length).fill(0);
 
-            // Draw edges
+            // Draw edges with gradient colors
             for (let i = 0; i < nodes.length; i++) {
                 for (let j = i + 1; j < nodes.length; j++) {
                     const dist = distance3D(nodes[i], nodes[j]);
@@ -394,14 +445,21 @@
 
                         // Only draw if both nodes are in front of camera
                         if (p1.z > -config.perspective && p2.z > -config.perspective) {
-                            const opacity = (1 - dist / config.connectRadius) * 0.4;
+                            const opacity = (1 - dist / config.connectRadius) * 0.5;
                             const avgScale = (p1.scale + p2.scale) / 2;
                             const finalOpacity = opacity * avgScale;
+
+                            // Create gradient between two node colors
+                            const gradient = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
+                            const c1 = nodes[i].color;
+                            const c2 = nodes[j].color;
+                            gradient.addColorStop(0, `rgba(${c1.r}, ${c1.g}, ${c1.b}, ${finalOpacity})`);
+                            gradient.addColorStop(1, `rgba(${c2.r}, ${c2.g}, ${c2.b}, ${finalOpacity})`);
 
                             ctx.beginPath();
                             ctx.moveTo(p1.x, p1.y);
                             ctx.lineTo(p2.x, p2.y);
-                            ctx.strokeStyle = `rgba(100, 160, 255, ${finalOpacity})`;
+                            ctx.strokeStyle = gradient;
                             ctx.lineWidth = config.edgeThickness * avgScale;
                             ctx.stroke();
 
@@ -419,20 +477,21 @@
                 if (p.z > -config.perspective) {
                     const size = config.nodeSize * p.scale;
                     const alpha = Math.min(1, p.scale);
+                    const color = p.node.color;
 
-                    // Glow effect
-                    const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size * 2);
-                    gradient.addColorStop(0, `rgba(100, 160, 255, ${alpha})`);
-                    gradient.addColorStop(0.5, `rgba(100, 160, 255, ${alpha * 0.3})`);
-                    gradient.addColorStop(1, 'rgba(100, 160, 255, 0)');
+                    // Glow effect with node's color
+                    const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size * 3);
+                    gradient.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`);
+                    gradient.addColorStop(0.4, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.4})`);
+                    gradient.addColorStop(1, `rgba(${color.r}, ${color.g}, ${color.b}, 0)`);
 
                     ctx.fillStyle = gradient;
                     ctx.beginPath();
-                    ctx.arc(p.x, p.y, size * 2, 0, Math.PI * 2);
+                    ctx.arc(p.x, p.y, size * 3, 0, Math.PI * 2);
                     ctx.fill();
 
-                    // Core
-                    ctx.fillStyle = `rgba(200, 220, 255, ${alpha})`;
+                    // Bright core
+                    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
                     ctx.beginPath();
                     ctx.arc(p.x, p.y, size * 0.5, 0, Math.PI * 2);
                     ctx.fill();
